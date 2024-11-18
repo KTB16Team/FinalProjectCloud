@@ -1,0 +1,27 @@
+# 환경 변수 파일
+.env
+
+# 특정 파일 무시 해제
+!monitoring/docker-elk/elasticsearch/config/elasticsearch.yml
+!monitoring/docker-elk/logstash/pipeline/logstash.conf
+
+# 로그 및 빌드 파일
+monitoring/docker-elk/logstash/pipeline/*.log
+
+# 잘 모르겠는 파일들
+.gitattributes
+demo.tape
+LICENSE
+README.md
+
+# IDE 및 운영 체제 관련
+.vscode/
+.DS_Store
+*.swp
+*.swo
+*.idea/
+Thumbs.db
+Desktop.ini
+*~
+
+
