@@ -1,19 +1,6 @@
 services:
 
-  # The 'setup' service runs a one-off script which initializes users inside
-  # Elasticsearch — such as 'logstash_internal' and 'kibana_system' — with the
-  # values of the passwords defined in the '.env' file. It also creates the
-  # roles required by some of these users.
-  #
-  # This task only needs to be performed once, during the *initial* startup of
-  # the stack. Any subsequent run will reset the passwords of existing users to
-  # the values defined inside the '.env' file, and the built-in roles to their
-  # default permissions.
-  #
-  # By default, it is excluded from the services started by 'docker compose up'
-  # due to the non-default profile it belongs to. To run it, either provide the
-  # '--profile=setup' CLI flag to Compose commands, or "up" the service by name
-  # such as 'docker compose up setup'.
+  # 초기 설정 서비스
   setup:
     profiles:
       - setup
@@ -53,14 +40,18 @@ services:
       #- 9300:9300
     environment:
       node.name: elasticsearch
-      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      ES_JAVA_OPTS: -Xms512m -Xmx512m  # 힙 메모리 설정
       # Bootstrap password.
       # Used to initialize the keystore during the initial startup of
       # Elasticsearch. Ignored on subsequent runs.
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-}
-      # Use single node discovery in order to disable production mode and avoid bootstrap checks.
-      # see: https://www.elastic.co/guide/en/elasticsearch/reference/current/bootstrap-checks.html
       discovery.type: single-node
+    deploy:
+      resources:  # 추가된 부분: 메모리 제한 설정
+        limits:
+          memory: 2g  # Elasticsearch 메모리 제한
+        reservations:
+          memory: 1g  # Elasticsearch 예약 메모리
     networks:
       - elk
     restart: unless-stopped
@@ -79,8 +70,14 @@ services:
       #- 50000:50000/udp
       - 9600:9600
     environment:
-      LS_JAVA_OPTS: -Xms256m -Xmx256m
+      LS_JAVA_OPTS: -Xms256m -Xmx256m  # 힙 메모리 설정
       LOGSTASH_INTERNAL_PASSWORD: ${LOGSTASH_INTERNAL_PASSWORD:-}
+    deploy:
+      resources:  # 추가된 부분: 메모리 제한 설정
+        limits:
+          memory: 1g  # Logstash 메모리 제한
+        reservations:
+          memory: 512m  # Logstash 예약 메모리
     networks:
       - elk
     depends_on:
@@ -98,6 +95,13 @@ services:
       - 5601:5601
     environment:
       KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-}
+      NODE_OPTIONS=--max-old-space-size=300  # 추가된 부분: Kibana 힙 메모리 설정
+    deploy:
+      resources:  # 추가된 부분: 메모리 제한 설정
+        limits:
+          memory: 512m  # Kibana 메모리 제한
+        reservations:
+          memory: 300m  # Kibana 예약 메모리
     networks:
       - elk
     depends_on:
