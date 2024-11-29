@@ -23,55 +23,67 @@ jobs:
 
       # 2. SSH를 통해 EC2에 접속하여 레포지토리 클론 및 배포
       - name: Clone and Deploy on EC2
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.ELK_EC2_HOST }}
-          username: ${{ secrets.ELK_EC2_USER }}
-          key: ${{ secrets.ELK_EC2_SSH_KEY }}
-          
-          script: |
-            # Docker 설치 확인 및 설치
-            if ! command -v docker &> /dev/null; then
-              echo "Docker is not installed. Installing now..."
-              sudo apt-get update
-              sudo apt-get install -y docker.io
-              echo "Docker installed successfully."
-            else
-              echo "Docker is already installed."
-            fi
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.ELK_EC2_HOST }}
+        username: ${{ secrets.ELK_EC2_USER }}
+        key: ${{ secrets.ELK_EC2_SSH_KEY }}
+        script: |
+          echo "Checking and installing Docker and Docker Compose if necessary..."
 
-            # Docker Compose 설치 확인 및 설치
-            if ! docker compose version &> /dev/null; then
-              echo "Docker Compose is not installed. Installing now..."
-              sudo apt-get install -y docker-compose-plugin
-              echo "Docker Compose installed successfully."
-            else
-              echo "Docker Compose is already installed."
-            fi
-            
-            # 배포 디렉토리 이동 및 준비
-            if [ ! -d "/home/ubuntu/FinalProjectCloud" ]; then
-              mkdir -p /home/ubuntu/FinalProjectCloud
-            fi
-            cd /home/ubuntu/FinalProjectCloud
+          # Docker 설치 확인 및 설치
+          if ! command -v docker &> /dev/null; then
+            echo "Installing Docker..."
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            echo "Docker installed successfully."
+          else
+            echo "Docker is already installed."
+          fi
 
-            # 레포지토리 클론 또는 업데이트
-            if [ ! -d ".git" ]; then
-              git clone --branch dev https://github.com/KTB16Team/FinalProjectCloud.git .
-            else
-              git reset --hard
-              git clean -fd
-              git pull origin dev
-            fi
+          # Docker Compose 독립 실행 파일 설치
+          if ! command -v docker-compose &> /dev/null; then
+            echo "Installing Docker Compose..."
+            sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+            sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose || true
+            echo "Docker Compose installed successfully."
+          else
+            echo "Docker Compose is already installed."
+          fi
 
-            # Docker Compose 실행 디렉토리로 이동
-            cd monitoring/elk-stack
+          # 배포 디렉토리 이동 및 준비
+          if [ ! -d "/home/ubuntu/FinalProjectCloud" ]; then
+            mkdir -p /home/ubuntu/FinalProjectCloud
+          fi
+          cd /home/ubuntu/FinalProjectCloud
 
-            # 기존 컨테이너 중지 및 제거
-            docker compose down
+          # 레포지토리 클론 또는 업데이트
+          if [ ! -d ".git" ]; then
+            git clone --branch dev https://github.com/KTB16Team/FinalProjectCloud.git .
+          else
+            git reset --hard
+            git clean -fd
+            git pull origin dev
+          fi
 
-            # Docker Compose로 컨테이너 실행
-            docker compose --profile=setup up setup && docker compose up -d
+          # Docker Compose 실행 디렉토리로 이동
+          if [ ! -d "monitoring/elk-stack" ]; then
+            echo "Error: Directory monitoring/elk-stack does not exist!"
+            exit 1
+          fi
+          cd monitoring/elk-stack
+
+          # 컨테이너 상태 확인 및 적절한 작업 수행
+          echo "Checking existing containers..."
+          if docker-compose ps | grep -q "Up"; then
+            echo "Containers are running. Restarting..."
+            docker-compose restart || { echo "Error: Failed to restart containers!"; exit 1; }
+          else
+            echo "No containers running. Starting new containers..."
+            docker-compose up -d || { echo "Error: Failed to start containers!"; exit 1; }
+          fi
+
 
   # 3. 헬스 체크 - 컨테이너가 실행 중인지 확인
   health-check:
@@ -108,6 +120,7 @@ jobs:
     needs: [deploy, health-check]
     steps:
       - name: Notify Discord of Build and Deployment Result
+        if: always()  # 항상 실행
         run: |
           # GitHub Actions 링크 생성
           ACTIONS_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
@@ -129,7 +142,7 @@ jobs:
                     { "name": "Health Check 결과", "value": "'"${{ needs.health-check.result }}"'", "inline": true }
                   ],
                   "footer": {
-                    "text": "ELK Stack CI/CD 완료 - '"$TIMESTAMP"'"
+                    "text": "ELK Stack 배포 완료 - '"$TIMESTAMP"'"
                   }
                 }]
               }' \
@@ -139,7 +152,7 @@ jobs:
             curl -H "Content-Type: application/json" \
               -d '{
                 "embeds": [{
-                  "title": "❌ ELK Stack CI/CD 실패",
+                  "title": "❌ ELK Stack 배포 실패",
                   "description": "헉 레전드 사건 발생!! [로그 확인하기]('"$ACTIONS_URL"')",
                   "color": 15158332,
                   "fields": [
@@ -147,7 +160,7 @@ jobs:
                     { "name": "Health Check 결과", "value": "'"${{ needs.health-check.result }}"'", "inline": true }
                   ],
                   "footer": {
-                    "text": "ELK Stack CI/CD 실패 - '"$TIMESTAMP"'"
+                    "text": "ELK Stack 배포 실패 - '"$TIMESTAMP"'"
                   }
                 }]
               }' \
