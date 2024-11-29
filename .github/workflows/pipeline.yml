@@ -29,6 +29,7 @@ jobs:
           script: |
             echo "Checking and installing Docker and Docker Compose if necessary..."
 
+            # Docker 설치 확인 및 설치
             if ! command -v docker &> /dev/null; then
               echo "Installing Docker..."
               sudo apt-get update
@@ -48,6 +49,11 @@ jobs:
               echo "Docker Compose is already installed."
             fi
 
+            # Docker 그룹 권한 추가
+            sudo usermod -aG docker $USER
+            newgrp docker
+
+            # 배포 디렉토리 이동 및 준비
             if [ ! -d "/home/ubuntu/FinalProjectCloud" ]; then
               mkdir -p /home/ubuntu/FinalProjectCloud
             fi
@@ -67,13 +73,21 @@ jobs:
             fi
             cd monitoring/ELK-stack
 
+            # 환경 변수 설정
+            export ELASTIC_VERSION="${{ secrets.ELASTIC_VERSION }}"
+            export ELASTIC_PASSWORD="${{ secrets.ELASTIC_PASSWORD }}"
+            export LOGSTASH_INTERNAL_PASSWORD="${{ secrets.LOGSTASH_INTERNAL_PASSWORD }}"
+            export KIBANA_SYSTEM_PASSWORD="${{ secrets.KIBANA_SYSTEM_PASSWORD }}"
+            export FILEBEAT_INTERNAL_PASSWORD="${{ secrets.FILEBEAT_INTERNAL_PASSWORD }}"
+            export BEATS_SYSTEM_PASSWORD="${{ secrets.BEATS_SYSTEM_PASSWORD }}"
+
             echo "Checking existing containers..."
-            if docker-compose ps | grep -q "Up"; then
+            if sudo docker-compose ps | grep -q "Up"; then
               echo "Containers are running. Restarting..."
-              docker-compose restart || { echo "Error: Failed to restart containers!"; exit 1; }
+              sudo docker-compose restart || { echo "Error: Failed to restart containers!"; exit 1; }
             else
               echo "No containers running. Starting new containers..."
-              docker-compose up -d || { echo "Error: Failed to start containers!"; exit 1; }
+              sudo docker-compose up -d || { echo "Error: Failed to start containers!"; exit 1; }
             fi
 
   health-check:
@@ -104,12 +118,15 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     needs: [deploy, health-check]
+    if: always()  # 항상 실행
     steps:
       - name: Notify Discord of Build and Deployment Result
-        if: always()
         run: |
           ACTIONS_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           TIMESTAMP=$(TZ='Asia/Seoul' date +'%p %I:%M' | sed 's/AM/오전/g; s/PM/오후/g')
+
+          echo "Deploy Result: ${{ needs.deploy.result }}"
+          echo "Health Check Result: ${{ needs.health-check.result }}"
 
           if [[ "${{ needs.deploy.result }}" == "success" && "${{ needs.health-check.result }}" == "success" ]]; then
             curl -H "Content-Type: application/json" \
