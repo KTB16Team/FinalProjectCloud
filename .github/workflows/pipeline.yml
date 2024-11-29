@@ -1,0 +1,135 @@
+name: elk-pipeline
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      ELASTIC_VERSION: ${{ secrets.ELASTIC_VERSION }}
+      ELASTIC_PASSWORD: ${{ secrets.ELASTIC_PASSWORD }}
+      LOGSTASH_INTERNAL_PASSWORD: ${{ secrets.LOGSTASH_INTERNAL_PASSWORD }}
+      KIBANA_SYSTEM_PASSWORD: ${{ secrets.KIBANA_SYSTEM_PASSWORD }}
+      FILEBEAT_INTERNAL_PASSWORD: ${{ secrets.FILEBEAT_INTERNAL_PASSWORD }}
+      BEATS_SYSTEM_PASSWORD: ${{ secrets.BEATS_SYSTEM_PASSWORD }}
+
+    steps:
+      # 1. 코드 체크아웃
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 2. SSH를 통해 EC2에 접속하여 레포지토리 클론 및 배포
+      - name: Clone and Deploy on EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.ELK_EC2_HOST }}
+          username: ${{ secrets.ELK_EC2_USER }}
+          key: ${{ secrets.ELK_EC2_SSH_KEY }}
+          
+          script: |
+            # 배포 디렉토리 이동 및 준비
+            if [ ! -d "/home/ubuntu/FinalProjectCloud" ]; then
+              mkdir -p /home/ubuntu/FinalProjectCloud
+            fi
+            cd /home/ubuntu/FinalProjectCloud
+
+            # 레포지토리 클론 또는 업데이트
+            if [ ! -d ".git" ]; then
+              git clone https://github.com/KTB16Team/FinalProjectCloud.git .
+            else
+              git reset --hard
+              git clean -fd
+              git pull origin dev
+            fi
+
+            # Docker Compose 실행 디렉토리로 이동
+            cd monitoring/elk-stack
+
+            # 기존 컨테이너 중지 및 제거
+            docker compose down
+
+            # Docker Compose로 컨테이너 실행
+            docker compose --profile=setup up setup && docker compose up -d
+
+  # 3. 헬스 체크 - 컨테이너가 실행 중인지 확인
+  health-check:
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Health Check Container
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.ELK_EC2_HOST }}
+          username: ${{ secrets.ELK_EC2_USER }}
+          key: ${{ secrets.ELK_EC2_SSH_KEY }}
+          script: |
+            # 컨테이너가 시작될 시간을 기다림
+            sleep 20
+
+            # Elasticsearch 컨테이너 헬스 체크
+            if ! curl -s -f http://localhost:9200/_cluster/health; then
+              echo "Error: Elasticsearch is not healthy or not responding."
+              exit 1
+            fi
+
+            # Kibana 컨테이너 헬스 체크
+            if ! curl -s -f http://localhost:5601/api/status; then
+              echo "Error: Kibana is not healthy or not responding."
+              exit 1
+            fi
+
+            echo "All services are running and healthy!"
+
+  # 4. 디스코드 알림
+  notify:
+    runs-on: ubuntu-latest
+    needs: [deploy, health-check]
+    steps:
+      - name: Notify Discord of Build and Deployment Result
+        run: |
+          # GitHub Actions 링크 생성
+          ACTIONS_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          # 한국 시간 생성
+          TIMESTAMP=$(TZ='Asia/Seoul' date +'%p %I:%M' | sed 's/AM/오전/g; s/PM/오후/g')
+
+          # 성공 여부 확인
+          if [[ "${{ needs.deploy.result }}" == "success" && "${{ needs.health-check.result }}" == "success" ]]; then
+            # 성공 Embed 메시지
+            curl -H "Content-Type: application/json" \
+              -d '{
+                "embeds": [{
+                  "title": "✅ ELK Stack 배포 완료",
+                  "description": "아싸! 배포 성공! 🎉",
+                  "color": 3066993,
+                  "fields": [
+                    { "name": "Deploy 결과", "value": "'"${{ needs.deploy.result }}"'", "inline": true },
+                    { "name": "Health Check 결과", "value": "'"${{ needs.health-check.result }}"'", "inline": true }
+                  ],
+                  "footer": {
+                    "text": "ELK Stack CI/CD 완료 - '"$TIMESTAMP"'"
+                  }
+                }]
+              }' \
+              https://discord.com/api/webhooks/1308680306341056574/Rept3YTMArv_h_0QFWJBo9x1sZhQokwl1S3I7P9Rj_OykBzsj1MtHz6ww4Uimo38plnG
+          else
+            # 실패 Embed 메시지
+            curl -H "Content-Type: application/json" \
+              -d '{
+                "embeds": [{
+                  "title": "❌ ELK Stack CI/CD 실패",
+                  "description": "헉 레전드 사건 발생!! [로그 확인하기]('"$ACTIONS_URL"')",
+                  "color": 15158332,
+                  "fields": [
+                    { "name": "Deploy 결과", "value": "'"${{ needs.deploy.result }}"'", "inline": true },
+                    { "name": "Health Check 결과", "value": "'"${{ needs.health-check.result }}"'", "inline": true }
+                  ],
+                  "footer": {
+                    "text": "ELK Stack CI/CD 실패 - '"$TIMESTAMP"'"
+                  }
+                }]
+              }' \
+              https://discord.com/api/webhooks/1308680306341056574/Rept3YTMArv_h_0QFWJBo9x1sZhQokwl1S3I7P9Rj_OykBzsj1MtHz6ww4Uimo38plnG
