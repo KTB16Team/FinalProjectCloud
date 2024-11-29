@@ -38,7 +38,7 @@ jobs:
 
             # 레포지토리 클론 또는 업데이트
             if [ ! -d ".git" ]; then
-              git clone https://github.com/KTB16Team/FinalProjectCloud.git .
+              git clone --branch dev https://github.com/KTB16Team/FinalProjectCloud.git .
             else
               git reset --hard
               git clean -fd
