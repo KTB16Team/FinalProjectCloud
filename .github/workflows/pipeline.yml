@@ -80,6 +80,7 @@ jobs:
             export KIBANA_SYSTEM_PASSWORD="${{ secrets.KIBANA_SYSTEM_PASSWORD }}"
             export FILEBEAT_INTERNAL_PASSWORD="${{ secrets.FILEBEAT_INTERNAL_PASSWORD }}"
             export BEATS_SYSTEM_PASSWORD="${{ secrets.BEATS_SYSTEM_PASSWORD }}"
+            docker-compose --profile=setup up setup
 
             echo "Checking existing containers..."
             if sudo docker-compose ps | grep -q "Up"; then
