@@ -26,6 +26,8 @@ services:
       - elk
     depends_on:
       - elasticsearch
+      - kibana # 추가
+      - logstash # 추가
 
   elasticsearch:
     build:
@@ -37,7 +39,7 @@ services:
       - elasticsearch:/usr/share/elasticsearch/data:Z
     ports:
       - 9200:9200
-      #- 9300:9300
+      - 9300:9300
     environment:
       node.name: elasticsearch
       ES_JAVA_OPTS: -Xms512m -Xmx512m  # 힙 메모리 설정
@@ -46,6 +48,8 @@ services:
       # Elasticsearch. Ignored on subsequent runs.
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-}
       discovery.type: single-node
+      network.host: 0.0.0.0 # 외부 IP 요청 허용
+      http.port: 9200
     deploy:
       resources:  # 추가된 부분: 메모리 제한 설정
         limits:
@@ -66,8 +70,8 @@ services:
       - ./logstash/pipeline:/usr/share/logstash/pipeline:ro,Z
     ports:
       - 5044:5044
-      #- 50000:50000/tcp
-      #- 50000:50000/udp
+      - 50000:50000/tcp
+      - 50000:50000/udp
       - 9600:9600
     environment:
       LS_JAVA_OPTS: -Xms256m -Xmx256m  # 힙 메모리 설정
@@ -95,13 +99,13 @@ services:
       - 5601:5601
     environment:
       KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-}
-      NODE_OPTIONS=--max-old-space-size=300  # 추가된 부분: Kibana 힙 메모리 설정
+      NODE_OPTIONS: "--max-old-space-size=500"  # 추가된 부분: Kibana 힙 메모리 설정
     deploy:
       resources:  # 추가된 부분: 메모리 제한 설정
         limits:
-          memory: 512m  # Kibana 메모리 제한
+          memory: 1g  # Kibana 메모리 제한
         reservations:
-          memory: 300m  # Kibana 예약 메모리
+          memory: 512m  # Kibana 예약 메모리
     networks:
       - elk
     depends_on:

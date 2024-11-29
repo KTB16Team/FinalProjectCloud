@@ -1,7 +1,6 @@
 # 환경 변수 파일
 .env
 ktb16.pem
-filebeat.yml
 
 # 특정 파일 무시 해제
 !monitoring/docker-elk/elasticsearch/config/elasticsearch.yml
