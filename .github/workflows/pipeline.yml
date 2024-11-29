@@ -101,14 +101,28 @@ jobs:
           username: ${{ secrets.ELK_EC2_USER }}
           key: ${{ secrets.ELK_EC2_SSH_KEY }}
           script: |
-            sleep 20
+            echo "Starting Health Check..."
 
-            if ! curl -s -f http://localhost:9200/_cluster/health; then
-              echo "Error: Elasticsearch is not healthy or not responding."
+            # Elasticsearch 헬스 체크 (최대 10회 시도, 5초 간격)
+            RETRY_COUNT=0
+            MAX_RETRIES=10
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              if curl -s -f http://13.209.13.135:9200/_cluster/health; then
+                echo "Elasticsearch is healthy!"
+                break
+              else
+                echo "Waiting for Elasticsearch to become healthy... ($((RETRY_COUNT+1))/$MAX_RETRIES)"
+                RETRY_COUNT=$((RETRY_COUNT+1))
+                sleep 5
+              fi
+            done
+
+            if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+              echo "Error: Elasticsearch is not healthy or not responding after $MAX_RETRIES attempts."
               exit 1
             fi
 
-            if ! curl -s -f http://localhost:5601/api/status; then
+            if ! curl -s -f http://13.209.13.135:5601/api/status; then
               echo "Error: Kibana is not healthy or not responding."
               exit 1
             fi
@@ -118,9 +132,10 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     needs: [deploy, health-check]
-    if: always()  # 항상 실행
+    
     steps:
       - name: Notify Discord of Build and Deployment Result
+        if: always()  # 항상 실행
         run: |
           ACTIONS_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           TIMESTAMP=$(TZ='Asia/Seoul' date +'%p %I:%M' | sed 's/AM/오전/g; s/PM/오후/g')
@@ -132,7 +147,7 @@ jobs:
             curl -H "Content-Type: application/json" \
               -d '{
                 "embeds": [{
-                  "title": "✅ ELK Stack 배포 완료",
+                  "title": "✅ ELK Stack 배포 및 헬스체크 완료",
                   "description": "아싸! 배포 성공! 🎉",
                   "color": 3066993,
                   "fields": [
