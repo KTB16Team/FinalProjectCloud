@@ -61,11 +61,11 @@ jobs:
               git pull origin dev
             fi
 
-            if [ ! -d "monitoring/elk-stack" ]; then
-              echo "Error: Directory monitoring/elk-stack does not exist!"
+            if [ ! -d "monitoring/ELK-stack" ]; then
+              echo "Error: Directory monitoring/ELK-stack does not exist!"
               exit 1
             fi
-            cd monitoring/elk-stack
+            cd monitoring/ELK-stack
 
             echo "Checking existing containers..."
             if docker-compose ps | grep -q "Up"; then
