@@ -1,0 +1,37 @@
+global:
+  scrape_interval: 15s
+  #scrape_timeout: 15s
+  evaluation_interval: 2m
+
+  external_labels:
+    monitor: 'prometheus'       # 기본적으로 붙여줄 라벨
+  query_log_file: query_log_file.log # prometheus의 쿼리 로그들을 기록, 없으면 기록안함
+
+rule_files:
+  #- "prometheus_rule.yml"  # prometheus 서버 모니터링
+  #- "backend_rule1.yml" # aimoBE1 모니터링
+
+# 매트릭을 수집할 엔드포인트로 여기선 Prometheus 서버 자신을 가리킨다.
+scrape_configs:
+  # 이 설정에서 수집한 타임시리즈에 `job=<job_name>`으로 잡의 이름을 설정한다.
+  # metrics_path의 기본 경로는 '/metrics'이고 scheme의 기본값은 `http`다
+  - job_name: 'prometheus' # job_name 은 모든 scrap 내에서 고유해야함
+    metrics_path: '/metrics'
+    honor_labels: false
+    honor_timestamps: false
+
+    # service discovery 설정(sd)
+
+    # 실제 scrap 하는 타겟에 관한 설정
+    static_configs:
+      - targets: ['52.78.176.0:9100'] # AimoBE_1 node-exporter
+        labels: 
+          service: 'monitor-AimoBE_1'
+
+      - targets: ['13.209.133.72:9100'] # AimoBE_2 node-exporter
+        labels:  
+          service: 'monitor-AimoBE_2'
+
+      - targets: ['3.38.108.177:9100'] # AimoAI node-exporter
+        labels:  
+          service: 'monitor-AimoAI'

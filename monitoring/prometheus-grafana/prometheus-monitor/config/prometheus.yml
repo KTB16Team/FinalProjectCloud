@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s
+  #scrape_timeout: 15s
+  evaluation_interval: 2m
+
+rule_files:
+  - "prometheus_rule.yml"  # prometheus 서버 모니터링
+
+# 매트릭을 수집할 엔드포인트로 여기선 Prometheus 서버 자신을 가리킨다.
+scrape_configs:
+  - job_name: "monitor-prometheus"
+    static_configs:
+      - targets: ["13.209.13.135:9090"] # Prometheus 서버 모니터링
+        labels:
+          service : 'monitor-prometheus'
