@@ -42,7 +42,7 @@ services:
       - 9300:9300
     environment:
       node.name: elasticsearch
-      ES_JAVA_OPTS: -Xms512m -Xmx512m  # 힙 메모리 설정
+      ES_JAVA_OPTS: -Xms8g -Xmx8g  # 힙 메모리 설정
       # Bootstrap password.
       # Used to initialize the keystore during the initial startup of
       # Elasticsearch. Ignored on subsequent runs.
@@ -53,9 +53,9 @@ services:
     deploy:
       resources:  # 추가된 부분: 메모리 제한 설정
         limits:
-          memory: 2g  # Elasticsearch 메모리 제한
+          memory: 12g  # Elasticsearch 메모리 제한
         reservations:
-          memory: 1g  # Elasticsearch 예약 메모리
+          memory: 8g  # Elasticsearch 예약 메모리
     networks:
       - elk
     restart: unless-stopped
