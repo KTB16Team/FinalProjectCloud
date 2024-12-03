@@ -13,5 +13,5 @@ filebeat.inputs:
     exclude_lines: ['^TRACE', '^GET', '^DEBUG'] # 불필요한 로그 제외
 
 output.logstash:
-  hosts: ["logstash:5044"] # Logstash 호스트와 포트 설정
+  hosts: ["${ELK_EC2_HOST}:5044"] # Logstash 호스트와 포트 설정
   ssl.enabled: false # SSL 비활성화

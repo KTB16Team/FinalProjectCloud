@@ -10,6 +10,6 @@ rule_files:
 scrape_configs:
   - job_name: "monitor-prometheus"
     static_configs:
-      - targets: ["13.209.13.135:9090"] # Prometheus 서버 모니터링
+      - targets: ["${ELK_EC2_HOST}:9090"] # Prometheus 서버 모니터링
         labels:
           service : 'monitor-prometheus'

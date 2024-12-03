@@ -24,14 +24,14 @@ scrape_configs:
 
     # 실제 scrap 하는 타겟에 관한 설정
     static_configs:
-      - targets: ['52.78.176.0:9100'] # AimoBE_1 node-exporter
+      - targets: ['${AimoBE_1_EC2_HOST}:9100'] # AimoBE_1 node-exporter
         labels: 
           service: 'monitor-AimoBE_1'
 
-      - targets: ['13.209.133.72:9100'] # AimoBE_2 node-exporter
+      - targets: ['${AimoBE_2_EC2_HOST}:9100'] # AimoBE_2 node-exporter
         labels:  
           service: 'monitor-AimoBE_2'
 
-      - targets: ['3.38.108.177:9100'] # AimoAI node-exporter
+      - targets: ['${AimoAI_EC2_HOST}:9100'] # AimoAI node-exporter
         labels:  
           service: 'monitor-AimoAI'
