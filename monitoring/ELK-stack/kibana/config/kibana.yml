@@ -1,7 +1,7 @@
 ---
 server.name: kibana
 server.host: 0.0.0.0
-elasticsearch.hosts: [ http://${ELK_EC2_HOST}:9200 ]  # Elasticsearch와 연결
+elasticsearch.hosts: [ "http://${ELK_EC2_HOST}:9200" ]  # Elasticsearch와 연결
 
 # X-Pack 보안 설정 (Elasticsearch와 연결하기 위한 사용자 계정 정보)
 elasticsearch.username: kibana_system

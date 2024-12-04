@@ -3,15 +3,27 @@ filebeat.inputs:
   - type: filestream
     enabled: true
     paths:
-      - /usr/share/elk/libs/*.log
+      - /home/ubuntu/build/libs/*.log  # 애플리케이션 로그 경로
     clean_removed: true  # 삭제된 로그 파일의 기록을 registry에서 제거
     close_inactive: 5m   # 5분 동안 로그 파일에 변화가 없다면 멈춤
     multiline:
-      pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}' # 시간 형식으로 새로운 이벤트 판단
+      pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'  # 로그의 시작 포맷
       negate: true
       match: after
-    exclude_lines: ['^TRACE', '^GET', '^DEBUG'] # 불필요한 로그 제외
+    exclude_lines: ['^TRACE', '^GET', '^DEBUG']  # 불필요한 로그 제외
 
 output.logstash:
-  hosts: ["${ELK_EC2_HOST}:5044"] # Logstash 호스트와 포트 설정
-  ssl.enabled: false # SSL 비활성화
+  hosts: ["13.209.13.135:5044"]  # Logstash 호스트 주소
+  ssl.enabled: false  # SSL 비활성화
+
+# Filebeat HTTP 모니터링 설정
+http:
+  enabled: true  # HTTP 모니터링 활성화
+  host: "0.0.0.0"  # 모든 네트워크 인터페이스에서 접속 허용
+  port: 5066  # Filebeat HTTP 모니터링 포트
+
+setup.dashboards.enabled: true
+setup.kibana:
+  host: "http://13.209.13.135:5601"
+  username: "elastic"  # Kibana의 사용자 계정
+  password: "ktb16aimo"     # 해당 계정의 비밀번호
