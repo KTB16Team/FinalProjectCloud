@@ -2,6 +2,7 @@ services:
 
   # 초기 설정 서비스
   setup:
+    container_name: elk-setup  # 컨테이너 이름 추가
     profiles:
       - setup
     build:
@@ -26,10 +27,11 @@ services:
       - elk
     depends_on:
       - elasticsearch
-      - kibana # 추가
-      - logstash # 추가
+      - kibana
+      - logstash
 
   elasticsearch:
+    container_name: elasticsearch  # 컨테이너 이름 추가
     build:
       context: elasticsearch/
       args:
@@ -43,9 +45,6 @@ services:
     environment:
       node.name: elasticsearch
       ES_JAVA_OPTS: -Xms8g -Xmx8g  # 힙 메모리 설정
-      # Bootstrap password.
-      # Used to initialize the keystore during the initial startup of
-      # Elasticsearch. Ignored on subsequent runs.
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-}
       discovery.type: single-node
       network.host: 0.0.0.0 # 외부 IP 요청 허용
@@ -61,6 +60,7 @@ services:
     restart: unless-stopped
 
   logstash:
+    container_name: logstash  # 컨테이너 이름 추가
     build:
       context: logstash/
       args:
@@ -76,6 +76,7 @@ services:
     environment:
       LS_JAVA_OPTS: -Xms256m -Xmx256m  # 힙 메모리 설정
       LOGSTASH_INTERNAL_PASSWORD: ${LOGSTASH_INTERNAL_PASSWORD:-}
+      ELK_EC2_HOST: ${ELK_EC2_HOST}  # 추가된 환경 변수
     deploy:
       resources:  # 추가된 부분: 메모리 제한 설정
         limits:
@@ -89,6 +90,7 @@ services:
     restart: unless-stopped
 
   kibana:
+    container_name: kibana  # 컨테이너 이름 추가
     build:
       context: kibana/
       args:
@@ -100,6 +102,7 @@ services:
     environment:
       KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-}
       NODE_OPTIONS: "--max-old-space-size=500"  # 추가된 부분: Kibana 힙 메모리 설정
+      ELK_EC2_HOST: ${ELK_EC2_HOST}  # 추가된 환경 변수
     deploy:
       resources:  # 추가된 부분: 메모리 제한 설정
         limits:
