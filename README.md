@@ -244,7 +244,7 @@ logstash: [logstashIP]:5044...
 
 서버가 실행 중이면 [http://[KibanaIP]:5601]로 이동하여 kibana UI에서 확인할 수 있습니다.
 
-![Kibana-Discover](./images/KTB16-Kibana_Discover.png)
+![Kibana-Discover](./images/KTB16-Kibana_Discover.png)
 
 ---
 
