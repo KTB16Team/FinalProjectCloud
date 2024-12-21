@@ -6,13 +6,32 @@
 
 ## 목차
 
-- [클라우드 아키텍처](#클라우드-아키텍처)
-  
+- [클라우드 아키텍처](#1-클라우드-아키텍처)
+  - [서비스 진행 과정](#서비스-진행-과정)
+  - [주요 구성 요소](#주요-구성-요소)
+- [CI/CD 과정](#2-cicd-과정)
+  - [FE 서버](#2-1-fe-서버)
+  - [BE 서버](#2-2-be-서버)
+  - [AI 서버](#2-3-ai-서버)
+  - [Monitoring 서버](#2-4-monitoring-서버)
+- [ELK-stack](#3-elk-stack)
+  - [사전 요구사항](#3-1-사전-요구사항)
+  - [배포 요구사항](#3-2-배포-요구사항)
+  - [Directory 구조](#3-3-directory-구조)
+  - [설치 및 배포](#3-4-설치-및-배포)
+  - [서버 접속](#3-5-서버-접속)
+- [Prometheus/Grafana](#4-prometheusgrafana)
+  - [사전 요구사항](#4-1-사전-요구사항)
+  - [배포 요구사항](#4-2-배포-요구사항)
+  - [Directory 구조](#4-3-directory-구조)
+  - [설치 및 배포](#4-4-설치-및-배포)
+  - [서버 접속](#4-5-서버-접속)
+
 ---
 
 ## 1. 클라우드 아키텍처
 
-![클라우드 아키텍처](./image/KTB-16.jpg)
+![클라우드 아키텍처](./images/KTB16.png)
 
 ### 서비스 진행 과정
 
@@ -225,7 +244,7 @@ logstash: [logstashIP]:5044...
 
 서버가 실행 중이면 [http://[KibanaIP]:5601]로 이동하여 kibana UI에서 확인할 수 있습니다.
 
-![Kibana-Discover](./images/KTB16-Kibana_Discover.jpg)
+![Kibana-Discover](./images/KTB16-Kibana_Discover.png)
 
 ---
 
@@ -289,10 +308,10 @@ docker run -d \
 
 수집하고 있는 메트릭은 [http://[PrometheusIP]:9090]로 이동하여 Prometheus target UI에서 확인할 수 있습니다.
 
-![Prometheus](./KTB16-Prometheus.jpg)
+![Prometheus](./images/KTB16-Prometheus.png)
 
 해당 메트릭을 대시보드에 시각화하여 [http://[GrafanaIP]:3000]로 이동하여 Grafana UI에서 확인할 수 있습니다.
 
-![Grafana](./KTB16-Grafana.jpg)
+![Grafana](./images/KTB16-Grafana.png)
 
 ---
