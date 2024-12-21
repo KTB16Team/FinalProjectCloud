@@ -8,6 +8,9 @@ ktb16.pem
 
 # 로그 및 빌드 파일
 monitoring/docker-elk/logstash/pipeline/*.log
+ELK-stack/metricbeat/
+ELK-stack/elastalert/
+monitoring/ELK-stack/filebeat/filebeat-compose.yml
 
 # 잘 모르겠는 파일들
 .gitattributes
