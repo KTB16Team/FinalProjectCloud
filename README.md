@@ -43,7 +43,9 @@
 ### 2-2. BE 서버
 
 1. GitHub Actions 서버에서 Gradle 빌드 수행
-2. Gradle된 `server.jar`(빌드된 서버 파일)은 BE 서버에 배포 → 이때 Screen을 이용해 세션 종료 시에도 서버가 유지되도록 설정
+2. Gradle된 `backend-server.jar`(빌드된 서버 파일)은 S3에 버전 관리 및 저장
+3. EC2에서 S3에 접근하여 가장 최근 버전의 서버파일을 다운로드 후 실행
+4. 이때 Screen을 이용해 세션 종료 시에도 서버가 유지되도록 설정
    
 ### 2-3. AI 서버
 
