@@ -1,0 +1,70 @@
+version: '3.7'  # 파일 규격 버전
+services:
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus/config:/etc/prometheus
+      - ./prometheus/volume:/prometheus
+    ports:
+      - 9090:9090
+    command:
+      - '--web.enable-lifecycle'
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+        reservations:
+          memory: 1g
+    environment:
+      AimoBE_1_EC2_HOST: ${AimoBE_1_EC2_HOST}
+      AimoBE_2_EC2_HOST: ${AimoBE_2_EC2_HOST}
+      AimoAI_EC2_HOST: ${AimoAI_EC2_HOST}
+      ELK_EC2_HOST: ${ELK_EC2_HOST}
+    restart: always
+    networks:
+      - promnet
+
+  prometheus-monitor:
+    image: prom/prometheus
+    container_name: prometheus-monitor
+    volumes:
+      - ./prometheus-monitor/config:/etc/prometheus
+    ports:
+      - 9091:9090
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    deploy:
+      resources:
+        limits:
+          memory: 1.5g
+        reservations:
+          memory: 512m
+    environment:
+      ELK_EC2_HOST: ${ELK_EC2_HOST}
+    restart: always
+    networks:
+      - promnet
+
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - 3000:3000
+    volumes:
+      - ./grafana/volume:/var/lib/grafana
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 512m
+    restart: always
+    networks:
+      - promnet
+
+networks:
+  promnet:
+    driver: bridge

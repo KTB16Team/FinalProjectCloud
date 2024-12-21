@@ -1,0 +1,9 @@
+---
+cluster.name: Aimo-ELK-Cluster
+network.host: 0.0.0.0
+
+#path.logs: /var/log/elk/ # 지정 경로에 자체로그 저장
+
+xpack.license.self_generated.type: basic # 기본 라이선스 사용 (무료)
+xpack.security.enabled: true # 보안 활성화(유저 계정과 비밀번호를 통해서만 접근)
+bootstrap.memory_lock: true # Swap 방지 설정(Elasticsearch가 Heap 메모리를 RAM에서 강제로 고정)

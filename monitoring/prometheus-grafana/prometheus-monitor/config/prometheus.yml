@@ -1,0 +1,12 @@
+# monitoring/prometheus-grafana/prometheus-monitor/config/prometheus.yml
+global:
+  scrape_interval: 15s
+  #scrape_timeout: 15s
+  evaluation_interval: 2m
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["${ELK_EC2_HOST}:9090"] # Prometheus 서버 모니터링
+        labels:
+            service: "EC2"

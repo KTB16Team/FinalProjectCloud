@@ -1,0 +1,15 @@
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /home/ubuntu/build/libs/*.log  # 애플리케이션 로그 경로
+    multiline.pattern: '^\d{4}-\d{2}-\d{2}'
+    multiline.negate: true
+    multiline.match: after 
+    exclude_lines: ['^DEBUG', '^TRACE']
+    clean_removed: true # 삭제된 로그 파일의 기록을 registry에서 제거
+    close_inactive: 5m # 5분 동안 로그 파일에 변화가 없다면 멈춤
+
+output.logstash:
+  hosts: ["${ELK_EC2_HOST}:5044"]  # Logstash 호스트 주소
+  ssl.enabled: false  # SSL 비활성화

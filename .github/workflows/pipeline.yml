@@ -1,0 +1,180 @@
+name: elk-pipeline
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      ELASTIC_VERSION: ${{ secrets.ELASTIC_VERSION }}
+      ELASTIC_PASSWORD: ${{ secrets.ELASTIC_PASSWORD }}
+      LOGSTASH_INTERNAL_PASSWORD: ${{ secrets.LOGSTASH_INTERNAL_PASSWORD }}
+      KIBANA_SYSTEM_PASSWORD: ${{ secrets.KIBANA_SYSTEM_PASSWORD }}
+      FILEBEAT_INTERNAL_PASSWORD: ${{ secrets.FILEBEAT_INTERNAL_PASSWORD }}
+      BEATS_SYSTEM_PASSWORD: ${{ secrets.BEATS_SYSTEM_PASSWORD }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Clone and Deploy on EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.ELK_EC2_HOST }}
+          username: ${{ secrets.ELK_EC2_USER }}
+          key: ${{ secrets.ELK_EC2_SSH_KEY }}
+          script: |
+            echo "Checking and installing Docker and Docker Compose if necessary..."
+
+            # Docker 설치 확인 및 설치
+            if ! command -v docker &> /dev/null; then
+              echo "Installing Docker..."
+              sudo apt-get update
+              sudo apt-get install -y docker.io
+              echo "Docker installed successfully."
+            else
+              echo "Docker is already installed."
+            fi
+
+            if ! command -v docker-compose &> /dev/null; then
+              echo "Installing Docker Compose..."
+              sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              sudo chmod +x /usr/local/bin/docker-compose
+              sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose || true
+              echo "Docker Compose installed successfully."
+            else
+              echo "Docker Compose is already installed."
+            fi
+
+            # Docker 그룹 권한 추가
+            sudo usermod -aG docker $USER
+            newgrp docker
+
+            # 배포 디렉토리 이동 및 준비
+            if [ ! -d "/home/ubuntu/FinalProjectCloud" ]; then
+              mkdir -p /home/ubuntu/FinalProjectCloud
+            fi
+            cd /home/ubuntu/FinalProjectCloud
+
+            if [ ! -d ".git" ]; then
+              git clone --branch dev https://github.com/KTB16Team/FinalProjectCloud.git .
+            else
+              git reset --hard
+              git clean -fd
+              git pull origin dev
+            fi
+
+            if [ ! -d "monitoring/ELK-stack" ]; then
+              echo "Error: Directory monitoring/ELK-stack does not exist!"
+              exit 1
+            fi
+            cd monitoring/ELK-stack
+
+            # 환경 변수 설정
+            export ELASTIC_VERSION="${{ secrets.ELASTIC_VERSION }}"
+            export ELASTIC_PASSWORD="${{ secrets.ELASTIC_PASSWORD }}"
+            export LOGSTASH_INTERNAL_PASSWORD="${{ secrets.LOGSTASH_INTERNAL_PASSWORD }}"
+            export KIBANA_SYSTEM_PASSWORD="${{ secrets.KIBANA_SYSTEM_PASSWORD }}"
+            export FILEBEAT_INTERNAL_PASSWORD="${{ secrets.FILEBEAT_INTERNAL_PASSWORD }}"
+            export BEATS_SYSTEM_PASSWORD="${{ secrets.BEATS_SYSTEM_PASSWORD }}"
+            docker-compose --profile=setup up setup
+
+            echo "Checking existing containers..."
+            if sudo docker-compose ps | grep -q "Up"; then
+              echo "Containers are running. Restarting..."
+              sudo docker-compose restart || { echo "Error: Failed to restart containers!"; exit 1; }
+            else
+              echo "No containers running. Starting new containers..."
+              sudo docker-compose up -d || { echo "Error: Failed to start containers!"; exit 1; }
+            fi
+
+  health-check:
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Health Check Container
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.ELK_EC2_HOST }}
+          username: ${{ secrets.ELK_EC2_USER }}
+          key: ${{ secrets.ELK_EC2_SSH_KEY }}
+          script: |
+            echo "Starting Health Check..."
+
+            # Elasticsearch 헬스 체크 (최대 10회 시도, 5초 간격)
+            RETRY_COUNT=0
+            MAX_RETRIES=10
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              if curl -s -f http://13.209.13.135:9200/_cluster/health; then
+                echo "Elasticsearch is healthy!"
+                break
+              else
+                echo "Waiting for Elasticsearch to become healthy... ($((RETRY_COUNT+1))/$MAX_RETRIES)"
+                RETRY_COUNT=$((RETRY_COUNT+1))
+                sleep 5
+              fi
+            done
+
+            if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+              echo "Error: Elasticsearch is not healthy or not responding after $MAX_RETRIES attempts."
+              exit 1
+            fi
+
+            if ! curl -s -f http://13.209.13.135:5601/api/status; then
+              echo "Error: Kibana is not healthy or not responding."
+              exit 1
+            fi
+
+            echo "All services are running and healthy!"
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [deploy, health-check]
+    
+    steps:
+      - name: Notify Discord of Build and Deployment Result
+        if: always()  # 항상 실행
+        run: |
+          ACTIONS_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          TIMESTAMP=$(TZ='Asia/Seoul' date +'%p %I:%M' | sed 's/AM/오전/g; s/PM/오후/g')
+
+          echo "Deploy Result: ${{ needs.deploy.result }}"
+          echo "Health Check Result: ${{ needs.health-check.result }}"
+
+          if [[ "${{ needs.deploy.result }}" == "success" && "${{ needs.health-check.result }}" == "success" ]]; then
+            curl -H "Content-Type: application/json" \
+              -d '{
+                "embeds": [{
+                  "title": "✅ ELK Stack 배포 및 헬스체크 완료",
+                  "description": "아싸! 배포 성공! 🎉",
+                  "color": 3066993,
+                  "fields": [
+                    { "name": "Deploy 결과", "value": "'"${{ needs.deploy.result }}"'", "inline": true },
+                    { "name": "Health Check 결과", "value": "'"${{ needs.health-check.result }}"'", "inline": true }
+                  ],
+                  "footer": {
+                    "text": "ELK Stack 배포 완료 - '"$TIMESTAMP"'"
+                  }
+                }]
+              }' \
+              https://discord.com/api/webhooks/1308680306341056574/Rept3YTMArv_h_0QFWJBo9x1sZhQokwl1S3I7P9Rj_OykBzsj1MtHz6ww4Uimo38plnG
+          else
+            curl -H "Content-Type: application/json" \
+              -d '{
+                "embeds": [{
+                  "title": "❌ ELK Stack 배포 실패",
+                  "description": "헉 레전드 사건 발생!! [로그 확인하기]('"$ACTIONS_URL"')",
+                  "color": 15158332,
+                  "fields": [
+                    { "name": "Deploy 결과", "value": "'"${{ needs.deploy.result }}"'", "inline": true },
+                    { "name": "Health Check 결과", "value": "'"${{ needs.health-check.result }}"'", "inline": true }
+                  ],
+                  "footer": {
+                    "text": "ELK Stack 배포 실패 - '"$TIMESTAMP"'"
+                  }
+                }]
+              }' \
+              https://discord.com/api/webhooks/1308680306341056574/Rept3YTMArv_h_0QFWJBo9x1sZhQokwl1S3I7P9Rj_OykBzsj1MtHz6ww4Uimo38plnG

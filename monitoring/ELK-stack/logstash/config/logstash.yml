@@ -1,0 +1,9 @@
+---
+http.host: 0.0.0.0
+node.name: logstash
+
+
+xpack.monitoring.enabled: true
+xpack.monitoring.elasticsearch.hosts: ["http://${ELK_EC2_HOST}:9200"]
+xpack.monitoring.elasticsearch.username: logstash_internal
+xpack.monitoring.elasticsearch.password: ${LOGSTASH_INTERNAL_PASSWORD}

@@ -1,0 +1,61 @@
+global:
+  scrape_interval: 30s   # 모든 메트릭 수집 주기
+  scrape_timeout: 10s        # 타임아웃 설정 (기본값: 10s)
+  evaluation_interval: 2m   # 규칙 평가 주기
+
+  external_labels:
+    monitor: 'prometheus'
+
+scrape_configs:
+  # AI 서버 Node Exporter
+  - job_name: 'AimoAI_EC2'
+    static_configs:
+      - targets:
+          - "${AimoAI_EC2_HOST}:9100"  # Node Exporter가 실행 중인 포트
+        labels:
+          service: 'EC2'
+
+  # AI 서버 cAdvisor
+  - job_name: 'AimoAI_cadvisor'
+    static_configs:
+      - targets:
+          - "${AimoAI_EC2_HOST}:8080"  # cAdvisor가 실행 중인 포트
+        labels:
+          service: 'AimoAI_cadvisor'
+
+  # AI 서버 Python 애플리케이션
+  - job_name: 'AimoAI_python'
+    static_configs:
+      - targets:
+          - "${AimoAI_EC2_HOST}:8000"  # cAdvisor가 실행 중인 포트
+        labels:
+          service: 'AimoAI_python'
+
+  # BE 서버 Spring Boot 애플리케이션
+  - job_name: 'AimoBE_1_spring_boot'
+    metrics_path: '/actuator/prometheus'
+    scheme: 'https'  # HTTPS 사용
+    static_configs:
+      - targets: ["api.ktb-aimo.link"]  # 도메인 이름으로 대상 설정
+        labels:
+          service: 'AimoBE_1_spring_boot'
+    tls_config:
+      insecure_skip_verify: true # 인증문제 무시
+    scrape_interval: 30s
+    scrape_timeout: 15s
+
+  # BE1 서버 Node Exporter
+  - job_name: 'AimoBE_1_EC2'
+    static_configs:
+      - targets:
+          - "${AimoBE_1_EC2_HOST}:9100" 
+        labels:  
+          service: 'EC2'
+
+  # BE2 서버 Node Exporter
+  - job_name: 'AimoBE_2_EC2'
+    static_configs:
+      - targets:
+          - "${AimoBE_2_EC2_HOST}:9100"
+        labels:  
+          service: 'EC2' # labels - service 동일한 이름을 지정하면 그룹화되어서 알림을 보낼 수 있음

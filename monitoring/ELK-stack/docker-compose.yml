@@ -1,0 +1,123 @@
+services:
+
+  # 초기 설정 서비스
+  setup:
+    container_name: elk-setup  # 컨테이너 이름 추가
+    profiles:
+      - setup
+    build:
+      context: setup/
+      args:
+        ELASTIC_VERSION: ${ELASTIC_VERSION}
+    init: true
+    volumes:
+      - ./setup/entrypoint.sh:/entrypoint.sh:ro,Z
+      - ./setup/lib.sh:/lib.sh:ro,Z
+      - ./setup/roles:/roles:ro,Z
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-}
+      LOGSTASH_INTERNAL_PASSWORD: ${LOGSTASH_INTERNAL_PASSWORD:-}
+      KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-}
+      METRICBEAT_INTERNAL_PASSWORD: ${METRICBEAT_INTERNAL_PASSWORD:-}
+      FILEBEAT_INTERNAL_PASSWORD: ${FILEBEAT_INTERNAL_PASSWORD:-}
+      HEARTBEAT_INTERNAL_PASSWORD: ${HEARTBEAT_INTERNAL_PASSWORD:-}
+      MONITORING_INTERNAL_PASSWORD: ${MONITORING_INTERNAL_PASSWORD:-}
+      BEATS_SYSTEM_PASSWORD: ${BEATS_SYSTEM_PASSWORD:-}
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+      - kibana
+      - logstash
+
+  elasticsearch:
+    container_name: elasticsearch  # 컨테이너 이름 추가
+    build:
+      context: elasticsearch/
+      args:
+        ELASTIC_VERSION: ${ELASTIC_VERSION}
+    volumes:
+      - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro,Z
+      - elasticsearch:/usr/share/elasticsearch/data:Z
+    ports:
+      - 9200:9200
+      - 9300:9300
+    environment:
+      node.name: elasticsearch
+      ES_JAVA_OPTS: -Xms8g -Xmx8g  # 힙 메모리 설정
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-}
+      discovery.type: single-node
+      network.host: 0.0.0.0  # 외부 IP 요청 허용
+      http.port: 9200
+    deploy:
+      resources:  # 추가된 부분: 메모리 제한 설정
+        limits:
+          memory: 12g  # Elasticsearch 메모리 제한
+        reservations:
+          memory: 8g  # Elasticsearch 예약 메모리
+    networks:
+      - elk
+    restart: unless-stopped
+
+  logstash:
+    container_name: logstash  # 컨테이너 이름 추가
+    build:
+      context: logstash/
+      args:
+        ELASTIC_VERSION: ${ELASTIC_VERSION}
+    volumes:
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro,Z
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro,Z
+    ports:
+      - 5044:5044
+      - 50000:50000/tcp
+      - 50000:50000/udp
+      - 9600:9600
+    environment:
+      LS_JAVA_OPTS: -Xms256m -Xmx256m  # 힙 메모리 설정
+      LOGSTASH_INTERNAL_PASSWORD: ${LOGSTASH_INTERNAL_PASSWORD:-}
+      ELK_EC2_HOST: ${ELK_EC2_HOST}  # 추가된 환경 변수
+    deploy:
+      resources:  # 추가된 부분: 메모리 제한 설정
+        limits:
+          memory: 1g  # Logstash 메모리 제한
+        reservations:
+          memory: 512m  # Logstash 예약 메모리
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  kibana:
+    container_name: kibana  # 컨테이너 이름 추가
+    build:
+      context: kibana/
+      args:
+        ELASTIC_VERSION: ${ELASTIC_VERSION}
+    volumes:
+      - ./kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro,Z
+    ports:
+      - 5601:5601
+    environment:
+      KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-}
+      NODE_OPTIONS: "--max-old-space-size=1024"  # 추가된 부분: Kibana 힙 메모리 설정
+      ELK_EC2_HOST: ${ELK_EC2_HOST}  # 추가된 환경 변수
+    deploy:
+      resources:  # 추가된 부분: 메모리 제한 설정
+        limits:
+          memory: 3g  # Kibana 메모리 제한
+        reservations:
+          memory: 512m  # Kibana 예약 메모리
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+networks:
+  elk:
+    driver: bridge
+
+volumes:
+  elasticsearch:
