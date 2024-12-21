@@ -12,7 +12,7 @@
 
 ## 1. 클라우드 아키텍처
 
-![클라우드 아키텍처](./images/KTB16-클라우드아키텍처.jpg)
+![클라우드 아키텍처](./KTB16-클라우드아키텍처.jpg)
 
 ### 서비스 진행 과정
 
@@ -289,10 +289,10 @@ docker run -d \
 
 수집하고 있는 메트릭은 [http://[PrometheusIP]:9090]로 이동하여 Prometheus target UI에서 확인할 수 있습니다.
 
-![Prometheus](./images/KTB16-Prometheus.jpg)
+![Prometheus](./KTB16-Prometheus.jpg)
 
 해당 메트릭을 대시보드에 시각화하여 [http://[GrafanaIP]:3000]로 이동하여 Grafana UI에서 확인할 수 있습니다.
 
-![Grafana](./images/KTB16-Grafana.jpg)
+![Grafana](./KTB16-Grafana.jpg)
 
 ---
