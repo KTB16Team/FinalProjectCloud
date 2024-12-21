@@ -7,11 +7,4 @@ elasticsearch.hosts: [ "http://${ELK_EC2_HOST}:9200" ]  # Elasticsearch와 연�
 elasticsearch.username: kibana_system
 elasticsearch.password: ${KIBANA_SYSTEM_PASSWORD} # 안전하게 환경 변수로 비밀번호 관리
 
-# 아래에서 부터는 추가 옵션
-# Kibana의 UI에서 Elasticsearch와 Logstash의 상태를 볼 수 있도록 설정.
-monitoring.ui.container.elasticsearch.enabled: true
-monitoring.ui.container.logstash.enabled: true
-
-# 지정된 경로에 자체로그 저장
-#logging:
-  #destination: /var/log/elk/kibana.log
+xpack.fleet.enabled: false # 사용하지 않는 plugin 비활성화

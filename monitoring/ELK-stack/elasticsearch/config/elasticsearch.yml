@@ -1,5 +1,5 @@
 ---
-cluster.name: docker-cluster1
+cluster.name: Aimo-ELK-Cluster
 network.host: 0.0.0.0
 
 #path.logs: /var/log/elk/ # 지정 경로에 자체로그 저장
